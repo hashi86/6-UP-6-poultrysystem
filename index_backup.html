@@ -2784,63 +2784,6 @@ let imgFile = null;
 
 
 
-
-// ==================== MOCK DATA FOR GITHUB PAGES ====================
-const mockData = {
-  dashboard: {
-    unread_alerts: 2,
-    pending_tasks: 3,
-    total_birds: 5420,
-    sheds_count: 3,
-    today_production: { eggs: 1250, feed: 85.5, mortality: 2 },
-    hatchery_active: 2,
-    sensors: [
-      { name: "الحظيرة 1 - الحرارة", value: 22, unit: "°م", status: "ok" },
-      { name: "الحظيرة 1 - الرطوبة", value: 65, unit: "%", status: "ok" },
-      { name: "الحظيرة 2 - الحرارة", value: 23, unit: "°م", status: "ok" }
-    ],
-    production_7days: [
-      { date: "2026-05-09", eggs: 1200 },
-      { date: "2026-05-10", eggs: 1240 },
-      { date: "2026-05-11", eggs: 1250 },
-      { date: "2026-05-12", eggs: 1235 },
-      { date: "2026-05-13", eggs: 1260 },
-      { date: "2026-05-14", eggs: 1245 },
-      { date: "2026-05-15", eggs: 1250 }
-    ]
-  }
-};
-
-// Mock apiFetch - returns mock data instead of calling backend
-const originalApiFetch = async function(path, opts={}) {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      if (path === '/dashboard') resolve(mockData.dashboard);
-      else if (path === '/tasks') resolve([
-        { id: 1, title: "فحص الحظيرة 1", priority: "high", done: false, time: "09:00" },
-        { id: 2, title: "تغيير المياه", priority: "med", done: false, time: "10:30" },
-        { id: 3, title: "إضافة العلف", priority: "med", done: false, time: "14:00" }
-      ]);
-      else if (path === '/hatchery') resolve([
-        { id: 1, status: 'incubating', start_date: '2026-05-01' },
-        { id: 2, status: 'incubating', start_date: '2026-05-05' }
-      ]);
-      else if (path === '/alerts') resolve([
-        { id: 1, title: "درجة حرارة مرتفعة", read: false },
-        { id: 2, title: "نقص في المخزون", read: false }
-      ]);
-      else if (path === '/sensors') resolve(mockData.dashboard.sensors);
-      else if (path === '/sheds') resolve([
-        { id: 1, name: "الحظيرة 1", birds: 1800, type: "بياض" },
-        { id: 2, name: "الحظيرة 2", birds: 1900, type: "بياض" },
-        { id: 3, name: "الحظيرة 3", birds: 1720, type: "لاحم" }
-      ]);
-      else resolve({ success: true });
-    }, 100);
-  });
-};
-
-
 // ==================== API HELPERS ====================
 async function apiFetch(path, opts={}) {
   try {
@@ -2874,19 +2817,32 @@ async function aiAnalyzeImage(imageBase64, mediaType, prompt) {
 async function checkAPI() {
   const el = document.getElementById('dbStatus');
   try {
-    // For GitHub Pages, we always show as online (using mock data)
-    if (el) {
-      el.className = 'db-status db-online';
-      el.innerHTML = '<span class="db-dot"></span> متصل ✓ (بيانات تجريبية)';
+    const r = await fetch('/api/dashboard');
+    if (r.ok) {
+      if (el) {
+        el.className = 'db-status db-online';
+        el.innerHTML = '<span class="db-dot"></span> متصل ✓';
+      }
+      apiFetch('/sheds/update-age').then(r => {
+        if (r && r.updated) {
+          showToast('⏱️ تم تحديث عمر الطيور في جميع الحظائر تلقائياً');
+        }
+      });
+      apiFetch('/alerts/inventory-check').then(r => {
+        if (r && r.created > 0) {
+          showToast(`⚠️ ${r.created} تنبيه جديد لنقص في المخزون`);
+          loadDashboard();
+        }
+      });
+      loadDashboard();
+    } else {
+      throw new Error('not ok');
     }
-    loadDashboard();
   } catch(e) {
     if (el) {
       el.className = 'db-status db-offline';
       el.innerHTML = '<span class="db-dot"></span> غير متصل - تحقق من السيرفر';
     }
-  }
-}
   }
 }
 
