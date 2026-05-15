@@ -2785,6 +2785,7 @@ let imgFile = null;
 
 
 
+
 // ==================== MOCK DATA FOR GITHUB PAGES ====================
 const mockData = {
   dashboard: {
@@ -2811,8 +2812,9 @@ const mockData = {
   }
 };
 
-// Mock apiFetch - returns mock data instead of calling backend
-const originalApiFetch = async function(path, opts={}) {
+// ==================== API HELPERS (MOCKED) ====================
+async function apiFetch(path, opts={}) {
+  console.log('Mock API Call:', path);
   return new Promise(resolve => {
     setTimeout(() => {
       if (path === '/dashboard') resolve(mockData.dashboard);
@@ -2835,57 +2837,36 @@ const originalApiFetch = async function(path, opts={}) {
         { id: 2, name: "الحظيرة 2", birds: 1900, type: "بياض" },
         { id: 3, name: "الحظيرة 3", birds: 1720, type: "لاحم" }
       ]);
+      else if (path === '/ai/chat') resolve({ text: "أهلاً بك! أنا مساعدك الذكي لنظام الدواجن. كيف يمكنني مساعدتك اليوم؟ (هذه استجابة تجريبية لأن الموقع يعمل حالياً بدون سيرفر)" });
       else resolve({ success: true });
-    }, 100);
+    }, 300);
   });
-};
-
-
-// ==================== API HELPERS ====================
-async function apiFetch(path, opts={}) {
-  try {
-    const res = await fetch(API + path, { headers: {'Content-Type':'application/json'}, ...opts });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
-    }
-    return await res.json();
-  } catch(e) { console.error('API error:', e); return null; }
 }
 
 async function aiChat(messages, systemPrompt) {
-  const data = await apiFetch('/ai/chat', {
-    method: 'POST',
-    body: JSON.stringify({ messages, systemPrompt })
-  });
-  return data;
+  return await apiFetch('/ai/chat', { method: 'POST' });
 }
 
 async function aiAnalyzeImage(imageBase64, mediaType, prompt) {
-  const data = await apiFetch('/ai/analyze-image', {
-    method: 'POST',
-    body: JSON.stringify({ imageBase64, mediaType, prompt })
-  });
-  return data;
+  return { text: "تم استلام الصورة. (ميزة تحليل الصور تتطلب الاتصال بالسيرفر)" };
 }
 
 // ==================== INIT ====================
-
 async function checkAPI() {
   const el = document.getElementById('dbStatus');
-  try {
-    // For GitHub Pages, we always show as online (using mock data)
-    if (el) {
-      el.className = 'db-status db-online';
-      el.innerHTML = '<span class="db-dot"></span> متصل ✓ (بيانات تجريبية)';
-    }
+  if (el) {
+    el.className = 'db-status db-online';
+    el.innerHTML = '<span class="db-dot"></span> متصل ✓ (بيانات تجريبية)';
+  }
+  loadDashboard();
+}
+
     loadDashboard();
   } catch(e) {
     if (el) {
       el.className = 'db-status db-offline';
       el.innerHTML = '<span class="db-dot"></span> غير متصل - تحقق من السيرفر';
     }
-  }
 }
   }
 }
